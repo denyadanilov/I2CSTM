@@ -16,8 +16,25 @@ void climate_station_init(climate_station_handle_t* handle) {
 
   MX_I2C1_Init();
 
-  display_init(&display_handle, &hi2c1);
-  rtc_init(&rtc_handle, &hi2c1);
+  if (display_init(&display_handle, &hi2c1) != DISPLAY_OK) {
+    Error_Handler();
+  }
+
+  if (rtc_init(&rtc_handle, &hi2c1) != RTC_OK) {
+    Error_Handler();
+  }
 
   *handle = climate_handle;
+}
+
+void climate_station_update(void) {
+  rtc_date_t date;
+
+  if (rtc_get_date(rtc_handle, &date) != RTC_OK) {
+    Error_Handler();
+  }
+
+  if (display_show_date(display_handle, date) != DISPLAY_OK) {
+    Error_Handler();
+  }
 }

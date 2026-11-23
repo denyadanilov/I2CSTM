@@ -4,5 +4,6 @@
 typedef int climate_station_handle_t;
 
 void climate_station_init(climate_station_handle_t* handle);
+void climate_station_update(void);
 
 #endif  // CLIMATE_STATION_H

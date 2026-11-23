@@ -11,12 +11,22 @@
 
 #define DISPLAY_ADDRESS 0x3C
 #define DISPLAY_I2C_TIMEOUT_MS 100
+#define DISPLAY_HANDLE_VALUE 1
+#define DISPLAY_PAGE_HEIGHT 8U
+#define DISPLAY_FONT_HEIGHT 8U
+#define DISPLAY_FIRST_CHARACTER ' '
+#define DISPLAY_LAST_CHARACTER '~'
+#define DISPLAY_TIME_TEXT_LENGTH 8
+#define DISPLAY_DATE_TEXT_LENGTH 14
+#define DISPLAY_MAX_HOURS 23U
+#define DISPLAY_MAX_MINUTES 59U
+#define DISPLAY_MAX_SECONDS 59U
 
-static display_handle_t display_handle = 1;
+static display_handle_t display_handle = DISPLAY_HANDLE_VALUE;
 
-static uint8_t framebuffer[DISPLAY_WIDTH * (DISPLAY_HEIGHT / 8)];
+static uint8_t
+    framebuffer[DISPLAY_WIDTH * (DISPLAY_HEIGHT / DISPLAY_PAGE_HEIGHT)];
 static OLED_Config oled_config;
-static bool initialized;
 
 static int32_t display_send_i2c(void* context, uint8_t address,
                                 const uint8_t* data, size_t length);
@@ -37,7 +47,6 @@ display_status_t display_init(display_handle_t* handle,
     return DISPLAY_ERROR_ARGUMENT;
   }
 
-  initialized = false;
   oled_config.bus_type = OLED_BUS_I2C;
   oled_config.width = DISPLAY_WIDTH;
   oled_config.height = DISPLAY_HEIGHT;
@@ -50,7 +59,6 @@ display_status_t display_init(display_handle_t* handle,
   }
 
   memset(framebuffer, 0, sizeof(framebuffer));
-  initialized = true;
 
   *handle = display_handle;
   return DISPLAY_OK;
@@ -63,16 +71,14 @@ display_status_t display_show_date(display_handle_t handle, rtc_date_t date) {
 
   static const char* const weekdays[] = {"Sun", "Mon", "Tue", "Wed",
                                          "Thu", "Fri", "Sat"};
-  char time_line[9];
-  char date_line[15];
 
-  if (!initialized) {
-    return DISPLAY_ERROR_NOT_INITIALIZED;
-  }
+  char time_line[DISPLAY_TIME_TEXT_LENGTH + 1];
+  char date_line[DISPLAY_DATE_TEXT_LENGTH + 1];
 
   uint8_t weekday = calendar_weekday(date.year, date.month, date.day);
-  if (weekday == 0U || date.hours > 23U || date.minutes > 59U ||
-      date.seconds > 59U) {
+  if (weekday == 0U || date.hours > DISPLAY_MAX_HOURS ||
+      date.minutes > DISPLAY_MAX_MINUTES ||
+      date.seconds > DISPLAY_MAX_SECONDS) {
     return DISPLAY_ERROR_ARGUMENT;
   }
 
@@ -83,7 +89,8 @@ display_status_t display_show_date(display_handle_t handle, rtc_date_t date) {
                              weekdays[weekday - 1U], (unsigned)date.day,
                              (unsigned)date.month, (unsigned)date.year);
 
-  if (time_length != 8 || date_length != 14) {
+  if (time_length != DISPLAY_TIME_TEXT_LENGTH ||
+      date_length != DISPLAY_DATE_TEXT_LENGTH) {
     return DISPLAY_ERROR_ARGUMENT;
   }
 
@@ -95,7 +102,7 @@ display_status_t display_show_date(display_handle_t handle, rtc_date_t date) {
   if (status != DISPLAY_OK) {
     return status;
   }
-  status = display_draw_text(0U, 8U, date_line);
+  status = display_draw_text(0U, DISPLAY_FONT_HEIGHT, date_line);
   if (status != DISPLAY_OK) {
     return status;
   }
@@ -115,18 +122,11 @@ static int32_t display_send_i2c(void* context, uint8_t address,
 }
 
 display_status_t display_clear(void) {
-  if (!initialized) {
-    return DISPLAY_ERROR_NOT_INITIALIZED;
-  }
   memset(framebuffer, 0, sizeof(framebuffer));
   return DISPLAY_OK;
 }
 
 display_status_t display_draw_text(uint16_t x, uint16_t y, const char* text) {
-  if (!initialized) {
-    return DISPLAY_ERROR_NOT_INITIALIZED;
-  }
-
   if (text == NULL || is_position_invalid(x, y)) {
     return DISPLAY_ERROR_ARGUMENT;
   }
@@ -155,21 +155,25 @@ display_status_t display_draw_text(uint16_t x, uint16_t y, const char* text) {
 }
 
 bool is_char_invalid(const char* currentChar) {
-  return (*currentChar < 0x20 || *currentChar > 0x7E);
+  return (*currentChar < DISPLAY_FIRST_CHARACTER ||
+          *currentChar > DISPLAY_LAST_CHARACTER);
 }
 
 bool is_position_invalid(uint16_t x, uint16_t y) {
-  return (x >= DISPLAY_WIDTH - FONT_ADVANCE || y > DISPLAY_HEIGHT - 8U);
+  return (x >= DISPLAY_WIDTH - FONT_ADVANCE ||
+          y > DISPLAY_HEIGHT - DISPLAY_FONT_HEIGHT);
 }
 
 display_status_t display_draw_char(uint16_t x, uint16_t y, char c) {
   for (uint16_t col = 0; col < FONT_ADVANCE; ++col) {
-    uint8_t bits = col < FONT_WIDTH ? font[c - 32][col] : 0;
+    uint8_t bits =
+        col < FONT_WIDTH ? font[c - DISPLAY_FIRST_CHARACTER][col] : 0;
 
-    for (uint16_t row = 0U; row < 8U; ++row) {
+    for (uint16_t row = 0U; row < DISPLAY_FONT_HEIGHT; ++row) {
       uint16_t pixel_y = y + row;
-      size_t index = (size_t)(pixel_y / 8U) * DISPLAY_WIDTH + x + col;
-      uint8_t mask = (uint8_t)(1U << (pixel_y % 8U));
+      size_t index =
+          (size_t)(pixel_y / DISPLAY_PAGE_HEIGHT) * DISPLAY_WIDTH + x + col;
+      uint8_t mask = (uint8_t)(1U << (pixel_y % DISPLAY_PAGE_HEIGHT));
 
       if (bits & (1U << row)) {
         framebuffer[index] |= mask;
@@ -183,9 +187,6 @@ display_status_t display_draw_char(uint16_t x, uint16_t y, char c) {
 }
 
 display_status_t display_flush(void) {
-  if (!initialized) {
-    return DISPLAY_ERROR_NOT_INITIALIZED;
-  }
   return OLED_DrawBitmap(&oled_config, framebuffer, sizeof(framebuffer)) ==
                  OLED_OK
              ? DISPLAY_OK
