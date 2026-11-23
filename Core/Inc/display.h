@@ -3,15 +3,13 @@
 
 #include <stdint.h>
 
+#include "real_time_clock.h"
 #include "stm32f4xx_hal.h"
 
-#ifndef DISPLAY_WIDTH
 #define DISPLAY_WIDTH 128U
-#endif
-
-#ifndef DISPLAY_HEIGHT
 #define DISPLAY_HEIGHT 64U
-#endif
+
+typedef int display_handle_t;
 
 typedef enum {
   DISPLAY_OK = 0,
@@ -20,9 +18,7 @@ typedef enum {
   DISPLAY_ERROR_IO
 } display_status_t;
 
-display_status_t display_init(I2C_HandleTypeDef *i2c);
-display_status_t display_clear(void);
-display_status_t display_draw_text(uint16_t x, uint16_t y, const char *text);
-display_status_t display_flush(void);
+display_status_t display_init(display_handle_t* handle, I2C_HandleTypeDef* i2c);
+display_status_t display_show_date(display_handle_t handle, rtc_date_t date);
 
 #endif

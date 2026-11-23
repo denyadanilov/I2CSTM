@@ -3,6 +3,6 @@
 
 typedef int climate_station_handle_t;
 
-void climate_station_init(climate_station_handle_t *handle);
+void climate_station_init(climate_station_handle_t* handle);
 
-#endif // CLIMATE_STATION_H
+#endif  // CLIMATE_STATION_H

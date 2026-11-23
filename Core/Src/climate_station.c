@@ -2,17 +2,22 @@
 
 #include "display.h"
 #include "i2c.h"
+#include "real_time_clock.h"
 
-int climate_station_handle = 1;
+static int climate_handle = 1;
+
+static display_handle_t display_handle;
+static rtc_handle_t rtc_handle;
 
 void climate_station_init(climate_station_handle_t* handle) {
-  MX_I2C1_Init();
-
-  if (display_init(&hi2c1) != DISPLAY_OK ||
-      display_draw_text(0, 0, "Hello world") != DISPLAY_OK ||
-      display_flush() != DISPLAY_OK) {
-    Error_Handler();
+  if (*handle == climate_handle) {
+    return;
   }
 
-  *handle = climate_station_handle;
+  MX_I2C1_Init();
+
+  display_init(&display_handle, &hi2c1);
+  rtc_init(&rtc_handle, &hi2c1);
+
+  *handle = climate_handle;
 }
