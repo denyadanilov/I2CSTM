@@ -105,4 +105,4 @@ static const uint8_t font[95][FONT_WIDTH] = {
     {0x08, 0x04, 0x08, 0x10, 0x08}  /* ~ */
 };
 
-#endif // FONT_H
+#endif  // FONT_H

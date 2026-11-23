@@ -1,0 +1,10 @@
+#ifndef TEST_I2C_H
+#define TEST_I2C_H
+
+#include "main.h"
+#include "stm32f4xx_hal.h"
+
+extern I2C_HandleTypeDef hi2c1;
+void MX_I2C1_Init(void);
+
+#endif

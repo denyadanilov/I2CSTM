@@ -12,15 +12,9 @@
 
 typedef int display_handle_t;
 
-typedef enum {
-  DISPLAY_OK = 0,
-  DISPLAY_ERROR_ARGUMENT,
-  DISPLAY_ERROR_NOT_INITIALIZED,
-  DISPLAY_ERROR_IO
-} display_status_t;
+typedef enum { DISPLAY_OK = 0, DISPLAY_ERROR_ARGUMENT, DISPLAY_ERROR_NOT_INITIALIZED, DISPLAY_ERROR_IO } display_status_t;
 
 display_status_t display_init(display_handle_t* handle, I2C_HandleTypeDef* i2c);
-display_status_t display_show_data(display_handle_t handle, rtc_date_t date,
-                                   temperature_sensor_data_t reading);
+display_status_t display_show_data(display_handle_t handle, rtc_date_t date, temperature_sensor_data_t reading);
 
 #endif
