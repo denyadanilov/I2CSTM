@@ -18,6 +18,10 @@
 #define DISPLAY_LAST_CHARACTER '~'
 #define DISPLAY_TIME_TEXT_LENGTH 8
 #define DISPLAY_DATE_TEXT_LENGTH 14
+#define DISPLAY_CLIMATE_TEXT_CAPACITY 17U
+#define DISPLAY_HUNDREDTHS_PER_UNIT 100
+#define DISPLAY_MAX_HUMIDITY_HUNDREDTHS 10000
+#define DISPLAY_CLIMATE_LINE_Y (2U * DISPLAY_FONT_HEIGHT)
 #define DISPLAY_MAX_HOURS 23U
 #define DISPLAY_MAX_MINUTES 59U
 #define DISPLAY_MAX_SECONDS 59U
@@ -64,33 +68,73 @@ display_status_t display_init(display_handle_t* handle,
   return DISPLAY_OK;
 }
 
-display_status_t display_show_date(display_handle_t handle, rtc_date_t date) {
-  if (handle != display_handle) {
-    return DISPLAY_ERROR_ARGUMENT;
-  }
-
-  static const char* const weekdays[] = {"Sun", "Mon", "Tue", "Wed",
-                                         "Thu", "Fri", "Sat"};
-
-  char time_line[DISPLAY_TIME_TEXT_LENGTH + 1];
-  char date_line[DISPLAY_DATE_TEXT_LENGTH + 1];
-
-  uint8_t weekday = calendar_weekday(date.year, date.month, date.day);
-  if (weekday == 0U || date.hours > DISPLAY_MAX_HOURS ||
-      date.minutes > DISPLAY_MAX_MINUTES ||
+static display_status_t display_format_time(rtc_date_t date, char* line,
+                                            size_t size) {
+  if (date.hours > DISPLAY_MAX_HOURS || date.minutes > DISPLAY_MAX_MINUTES ||
       date.seconds > DISPLAY_MAX_SECONDS) {
     return DISPLAY_ERROR_ARGUMENT;
   }
 
-  int time_length = snprintf(time_line, sizeof(time_line), "%02u:%02u:%02u",
-                             (unsigned)date.hours, (unsigned)date.minutes,
-                             (unsigned)date.seconds);
-  int date_length = snprintf(date_line, sizeof(date_line), "%s %02u.%02u.%04u",
-                             weekdays[weekday - 1U], (unsigned)date.day,
-                             (unsigned)date.month, (unsigned)date.year);
+  int length = snprintf(line, size, "%02u:%02u:%02u", (unsigned)date.hours,
+                        (unsigned)date.minutes, (unsigned)date.seconds);
+  return length == DISPLAY_TIME_TEXT_LENGTH && (size_t)length < size
+             ? DISPLAY_OK
+             : DISPLAY_ERROR_ARGUMENT;
+}
 
-  if (time_length != DISPLAY_TIME_TEXT_LENGTH ||
-      date_length != DISPLAY_DATE_TEXT_LENGTH) {
+static display_status_t display_format_date(rtc_date_t date, char* line,
+                                            size_t size) {
+  static const char* const weekdays[] = {"Sun", "Mon", "Tue", "Wed",
+                                         "Thu", "Fri", "Sat"};
+
+  uint8_t weekday = calendar_weekday(date.year, date.month, date.day);
+  if (weekday == 0U) {
+    return DISPLAY_ERROR_ARGUMENT;
+  }
+
+  int length = snprintf(line, size, "%s %02u.%02u.%04u", weekdays[weekday - 1U],
+                        (unsigned)date.day, (unsigned)date.month,
+                        (unsigned)date.year);
+  return length == DISPLAY_DATE_TEXT_LENGTH && (size_t)length < size
+             ? DISPLAY_OK
+             : DISPLAY_ERROR_ARGUMENT;
+}
+
+static display_status_t display_format_climate(
+    const temperature_sensor_data_t* reading, char* line, size_t size) {
+  if (reading->humidity < 0 ||
+      reading->humidity > DISPLAY_MAX_HUMIDITY_HUNDREDTHS) {
+    return DISPLAY_ERROR_ARGUMENT;
+  }
+
+  int32_t temperature = reading->temperature;
+  uint32_t magnitude =
+      (uint32_t)(temperature < 0 ? -temperature : temperature);
+  unsigned humidity = (unsigned)reading->humidity;
+  int length = snprintf(
+      line, size, "%s%lu.%02luC %u.%02u%%", temperature < 0 ? "-" : "",
+      (unsigned long)(magnitude / DISPLAY_HUNDREDTHS_PER_UNIT),
+      (unsigned long)(magnitude % DISPLAY_HUNDREDTHS_PER_UNIT),
+      humidity / DISPLAY_HUNDREDTHS_PER_UNIT,
+      humidity % DISPLAY_HUNDREDTHS_PER_UNIT);
+  return length >= 0 && (size_t)length < size ? DISPLAY_OK
+                                              : DISPLAY_ERROR_ARGUMENT;
+}
+
+display_status_t display_show_data(display_handle_t handle, rtc_date_t date,
+                                   temperature_sensor_data_t reading) {
+  if (handle != display_handle) {
+    return DISPLAY_ERROR_ARGUMENT;
+  }
+
+  char time_line[DISPLAY_TIME_TEXT_LENGTH + 1];
+  char date_line[DISPLAY_DATE_TEXT_LENGTH + 1];
+  char climate_line[DISPLAY_CLIMATE_TEXT_CAPACITY];
+
+  if (display_format_time(date, time_line, sizeof(time_line)) != DISPLAY_OK ||
+      display_format_date(date, date_line, sizeof(date_line)) != DISPLAY_OK ||
+      display_format_climate(&reading, climate_line, sizeof(climate_line)) !=
+          DISPLAY_OK) {
     return DISPLAY_ERROR_ARGUMENT;
   }
 
@@ -103,6 +147,10 @@ display_status_t display_show_date(display_handle_t handle, rtc_date_t date) {
     return status;
   }
   status = display_draw_text(0U, DISPLAY_FONT_HEIGHT, date_line);
+  if (status != DISPLAY_OK) {
+    return status;
+  }
+  status = display_draw_text(0U, DISPLAY_CLIMATE_LINE_Y, climate_line);
   if (status != DISPLAY_OK) {
     return status;
   }

@@ -5,6 +5,7 @@
 
 #include "real_time_clock.h"
 #include "stm32f4xx_hal.h"
+#include "temperature_sensor.h"
 
 #define DISPLAY_WIDTH 128U
 #define DISPLAY_HEIGHT 64U
@@ -19,6 +20,7 @@ typedef enum {
 } display_status_t;
 
 display_status_t display_init(display_handle_t* handle, I2C_HandleTypeDef* i2c);
-display_status_t display_show_date(display_handle_t handle, rtc_date_t date);
+display_status_t display_show_data(display_handle_t handle, rtc_date_t date,
+                                   temperature_sensor_data_t reading);
 
 #endif
