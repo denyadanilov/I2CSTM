@@ -43,29 +43,19 @@ target_link_directories(${CMAKE_PROJECT_NAME} PRIVATE
 )
 
 # Add sources to executable
-set(SSD1306_DIR "${CMAKE_CURRENT_SOURCE_DIR}/.pio/libdeps/blackpill_f411ce/STM32-SSD1306"
-    CACHE PATH "Path to the STM32-SSD1306 library")
-if(NOT EXISTS "${SSD1306_DIR}/include/ssd1306.h" OR
-   NOT EXISTS "${SSD1306_DIR}/src/ssd1306.c")
-    message(FATAL_ERROR
-        "STM32-SSD1306 not found in ${SSD1306_DIR}. Install PlatformIO dependencies or set SSD1306_DIR.")
-endif()
-
 target_sources(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user sources here
     Core/Src/calendar.c
     Core/Src/climate_station.c
-    Core/Src/display.c
     Core/Src/real_time_clock.c
     Core/Src/rtc_build_time.c
     Core/Src/temperature_sensor.c
-    "${SSD1306_DIR}/src/ssd1306.c"
+    Core/Src/transmitter.c
 )
 
 # Add include paths
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined include paths
-    "${SSD1306_DIR}/include"
 )
 
 # Add project symbols (macros)
