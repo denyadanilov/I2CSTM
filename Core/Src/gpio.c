@@ -32,7 +32,7 @@
 
 /* USER CODE END 1 */
 
-/** Pinout Configuration
+/** Configure pins
 */
 void MX_GPIO_Init(void)
 {
@@ -43,8 +43,10 @@ void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(TRANSMITTER_CS_GPIO_Port, TRANSMITTER_CS_Pin, GPIO_PIN_SET);
 
+  /*Configure GPIO pin : TRANSMITTER_CS_Pin */
   GPIO_InitStruct.Pin = TRANSMITTER_CS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
